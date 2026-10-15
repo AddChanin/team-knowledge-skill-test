@@ -1,0 +1,48 @@
+
+name: Publish Ignition Issue Guide
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Skill
+        run: |
+          test -f ignition-issue-guide/SKILL.md
+
+      - name: Build ZIP
+        run: |
+          mkdir -p dist
+          zip -r dist/ignition-issue-guide.zip ignition-issue-guide
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ignition-issue-guide
+          path: dist/ignition-issue-guide.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/ignition-issue-guide.zip \
+            --title "Ignition Issue Guide $GITHUB_REF_NAME" \
+            --generate-notes
